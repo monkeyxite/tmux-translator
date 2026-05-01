@@ -37,7 +37,9 @@ show() {
   printf '%s\n' "$TEXT"
   printf '─────────────────────────────────────────\n'
   printf '\e[32m⟨ Translation ⟩\e[0m\n'
-  /Users/ehoujin/.local/bin/uv run --with requests python3 "$CDIR/engine/translator.py" --engine="$ENGINE" --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null
+  local nlines
+  nlines=$(printf '%s\n' "$TEXT" | wc -l | tr -d ' ')
+  /Users/ehoujin/.local/bin/uv run --with requests python3 "$CDIR/engine/translator.py" --engine="$ENGINE" --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null | tail -n +$((nlines + 1)) | grep -v '^ \*'
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
   printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine\e[0m\n'
 }
