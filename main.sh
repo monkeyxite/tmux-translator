@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export PATH="$HOME/.local/bin:$PATH"
 
 CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "$CURRENT_DIR/settings.sh"
@@ -8,6 +9,9 @@ get_to() { echo "$(get_tmux_option "$to" "$default_to")"; }
 get_width() { echo "$(get_tmux_option "$width" "$default_width")"; }
 get_height() { echo "$(get_tmux_option "$height" "$default_height")"; }
 get_engine() { echo "$(get_tmux_option "$engine" "$default_engine")"; }
+get_llm_base() { echo "$(get_tmux_option "$llm_api_base" "$default_llm_api_base")"; }
+get_llm_model() { echo "$(get_tmux_option "$llm_model" "$default_llm_model")"; }
+get_llm_key_cmd() { echo "$(get_tmux_option "$llm_api_key_cmd" "$default_llm_api_key_cmd")"; }
 
 TMPF="/tmp/tmux-translator-input.txt"
 tmux save-buffer - > "$TMPF" 2>/dev/null
@@ -23,13 +27,42 @@ ENGINE=$(get_engine)
 SCRIPT="/tmp/tmux-translator-run.sh"
 cat > "$SCRIPT" << 'HEREDOC'
 #!/usr/bin/env bash
+export PATH="$HOME/.local/bin:$PATH"
 FROM="__FROM__"
 TO="__TO__"
 ENGINE="__ENGINE__"
 CDIR="__CDIR__"
 TEXT=$(cat /tmp/tmux-translator-input.txt)
 
+do_translate() {
+  case "$ENGINE" in
+    trans)
+      trans -brief :"$TO" "$TEXT" 2>/dev/null
+      ;;
+    google)
+      local nlines
+      nlines=$(printf '%s\n' "$TEXT" | wc -l | tr -d ' ')
+      uv run --with requests python3 "$CDIR/engine/translator.py" --engine=google --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null | tail -n +$((nlines + 1)) | grep -v '^ \*'
+      ;;
+    llm)
+      local KEY
+      KEY=$(__LLM_KEY_CMD__)
+      local prompt="Translate the following to ${TO}. Only output the translation, nothing else:\n${TEXT}"
+      curl -s __LLM_BASE__/chat/completions \
+        -H "Authorization: Bearer $KEY" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"__LLM_MODEL__\",\"messages\":[{\"role\":\"user\",\"content\":\"$(echo "$prompt" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')\"}],\"max_tokens\":500,\"temperature\":0}" 2>/dev/null \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" 2>/dev/null
+      ;;
+    translategemma)
+      uv run --with mlx-lm python3 "$CDIR/engine/translategemma.py" --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null
+      ;;
+  esac
+}
+
 show() {
+  # Resolve short aliases
+  case "$ENGINE" in g) ENGINE="google";; tg) ENGINE="translategemma";; l) ENGINE="llm";; esac
   tput clear
   printf '\e[1;34m 󰗊  Translate │ %s→%s │ %s\e[0m\n' "$FROM" "$TO" "$ENGINE"
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
@@ -37,11 +70,9 @@ show() {
   printf '%s\n' "$TEXT"
   printf '─────────────────────────────────────────\n'
   printf '\e[32m⟨ Translation ⟩\e[0m\n'
-  local nlines
-  nlines=$(printf '%s\n' "$TEXT" | wc -l | tr -d ' ')
-  /Users/ehoujin/.local/bin/uv run --with requests python3 "$CDIR/engine/translator.py" --engine="$ENGINE" --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null | tail -n +$((nlines + 1)) | grep -v '^ \*'
+  do_translate
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine\e[0m\n'
+  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine(trans/google/llm/translategemma)\e[0m\n'
 }
 
 show
@@ -52,11 +83,14 @@ while IFS= read -rsn1 key; do
     s) TMP="$FROM"; FROM="$TO"; TO="$TMP"; show ;;
     f) printf '\e[33m from: \e[0m'; read -r FROM; show ;;
     t) printf '\e[33m to: \e[0m'; read -r TO; show ;;
-    e) printf '\e[33m engine: \e[0m'; read -r ENGINE; show ;;
+    e) printf '\e[33m engine (trans/g/tg/l): \e[0m'; read -r ENGINE; show ;;
   esac
 done
 HEREDOC
 
-sed -i '' "s|__FROM__|${FROM}|;s|__TO__|${TO}|;s|__ENGINE__|${ENGINE}|;s|__CDIR__|${CURRENT_DIR}|" "$SCRIPT"
+LLM_BASE=$(get_llm_base)
+LLM_MODEL=$(get_llm_model)
+LLM_KEY_CMD=$(get_llm_key_cmd)
+sed -i '' "s|__FROM__|${FROM}|;s|__TO__|${TO}|;s|__ENGINE__|${ENGINE}|;s|__CDIR__|${CURRENT_DIR}|;s|__LLM_BASE__|${LLM_BASE}|;s|__LLM_MODEL__|${LLM_MODEL}|;s|__LLM_KEY_CMD__|${LLM_KEY_CMD}|" "$SCRIPT"
 chmod +x "$SCRIPT"
 tmux popup -w "$(get_width)" -h "$(get_height)" -E "bash $SCRIPT"
