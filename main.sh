@@ -82,10 +82,21 @@ show() {
   printf '%s\n' "$TEXT"
   printf '─────────────────────────────────────────\n'
   printf '\e[32m⟨ Translation ⟩\e[0m\n'
-  TRANSLATION=$(do_translate)
+  # Spinner while translating
+  do_translate > /tmp/tmux-translator-result &
+  local PID=$!
+  local SPIN='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  local i=0
+  while kill -0 $PID 2>/dev/null; do
+    printf '\r\e[36m %s translating...\e[0m' "${SPIN:i++%${#SPIN}:1}"
+    sleep 0.1
+  done
+  printf '\r                      \r'
+  TRANSLATION=$(cat /tmp/tmux-translator-result)
+  rm -f /tmp/tmux-translator-result
   printf '%s\n' "$TRANSLATION"
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine(trans/g/tg/l) [c]opy [+/-]size\e[0m\n'
+  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine(trans/g/tg/l) [c]opy [v]iew [+/-]size\e[0m\n'
 }
 
 trap 'rm -f /tmp/tmux-translator-input.txt; exit 0' INT
@@ -100,7 +111,7 @@ while IFS= read -rsn1 key; do
     t) printf '\e[33m to: \e[0m'; read -r TO; show ;;
     e) printf '\e[33m engine (trans/g/tg/l): \e[0m'; read -r ENGINE; show ;;
     c) printf "%s" "$TRANSLATION" | pbcopy; printf "\e[32m ✓ copied\e[0m\n" ;;
-    c) printf '%s' "$TRANSLATION" | pbcopy; printf '\e[32m ✓ copied\e[0m\n' ;;
+    v) printf "⟨ Source ⟩\n%s\n\n⟨ Translation ⟩\n%s\n" "$TEXT" "$TRANSLATION" > /tmp/tmux-translator-view; less /tmp/tmux-translator-view; show ;;
     +|=) echo "bigger" > /tmp/tmux-translator-resize; exit 0 ;;
     -) echo "smaller" > /tmp/tmux-translator-resize; exit 0 ;;
   esac
