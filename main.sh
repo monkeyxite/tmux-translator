@@ -28,6 +28,7 @@ SCRIPT="/tmp/tmux-translator-run.sh"
 cat > "$SCRIPT" << 'HEREDOC'
 #!/usr/bin/env bash
 export PATH="$HOME/.local/bin:$PATH"
+export PASSWORD_STORE_DIR="$HOME/.local/share/pass"
 FROM="__FROM__"
 TO="__TO__"
 ENGINE="__ENGINE__"
@@ -47,15 +48,26 @@ do_translate() {
     llm)
       local KEY
       KEY=$(__LLM_KEY_CMD__)
-      local prompt="Translate the following to ${TO}. Only output the translation, nothing else:\n${TEXT}"
+      local ESCAPED_TEXT
+      ESCAPED_TEXT=$(echo "$TEXT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])")
       curl -s __LLM_BASE__/chat/completions \
         -H "Authorization: Bearer $KEY" \
         -H "Content-Type: application/json" \
-        -d "{\"model\":\"__LLM_MODEL__\",\"messages\":[{\"role\":\"user\",\"content\":\"$(echo "$prompt" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')\"}],\"max_tokens\":500,\"temperature\":0}" 2>/dev/null \
+        -d "{\"model\":\"__LLM_MODEL__\",\"messages\":[{\"role\":\"user\",\"content\":\"Translate the following to ${TO}. Only output the translation, nothing else:\\n${ESCAPED_TEXT}\"}],\"max_tokens\":500,\"temperature\":0}" 2>/dev/null \
         | python3 -c "import sys,json; print(json.load(sys.stdin)['choices'][0]['message']['content'])" 2>/dev/null
       ;;
     translategemma)
-      uv run --with mlx-lm python3 "$CDIR/engine/translategemma.py" --from="$FROM" --to="$TO" "$TEXT" 2>/dev/null
+      local KEY
+      KEY=$(__LLM_KEY_CMD__)
+      local ESCAPED_TEXT
+      ESCAPED_TEXT=$(echo "$TEXT" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().strip())[1:-1])")
+      local WORDS=$(echo "$TEXT" | wc -w | tr -d ' ')
+      local MAX_TOK=$(( WORDS * 3 + 20 ))  # ~3 tokens/word + buffer
+      curl -s __LLM_BASE__/chat/completions \
+        -H "Authorization: Bearer $KEY" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\":\"translategemma-4b-it-4bit\",\"messages\":[{\"role\":\"user\",\"content\":\"${FROM} to ${TO}: ${ESCAPED_TEXT}\"}],\"max_tokens\":${MAX_TOK},\"temperature\":0}" 2>/dev/null \
+        | python3 -c "import sys,json; r=json.load(sys.stdin)['choices'][0]['message']['content']; print(r.split('<end_of_turn>')[0].strip())" 2>/dev/null
       ;;
   esac
 }
