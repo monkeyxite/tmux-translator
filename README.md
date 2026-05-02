@@ -45,6 +45,10 @@ Reload and press `prefix + I` to install.
 | `f` | Change source language |
 | `t` | Change target language |
 | `e` | Change engine (trans/g/tg/l) |
+| `c` | Copy translation to clipboard |
+| `+`/`=` | Enlarge popup (+10%) |
+| `-` | Shrink popup (-10%) |
+| `Ctrl+C` | Dismiss instantly (even during translation) |
 
 ## Engines
 

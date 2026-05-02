@@ -61,6 +61,10 @@ Ladda om och tryck `prefix + I` för att installera.
 | `f` | Ändra källspråk |
 | `t` | Ändra målspråk |
 | `e` | Ändra motor (trans/g/tg/l) |
+| `c` | Kopiera översättning till urklipp |
+| `+`/`=` | Förstora popup (+10%) |
+| `-` | Förminska popup (-10%) |
+| `Ctrl+C` | Stäng direkt (även under översättning) |
 
 ## Motorer
 

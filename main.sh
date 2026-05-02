@@ -82,10 +82,13 @@ show() {
   printf '%s\n' "$TEXT"
   printf '─────────────────────────────────────────\n'
   printf '\e[32m⟨ Translation ⟩\e[0m\n'
-  do_translate
+  TRANSLATION=$(do_translate)
+  printf '%s\n' "$TRANSLATION"
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine(trans/google/llm/translategemma)\e[0m\n'
+  printf '\e[90m [q]uit [s]wap [f]rom [t]o [e]ngine(trans/g/tg/l) [c]opy [+/-]size\e[0m\n'
 }
+
+trap 'rm -f /tmp/tmux-translator-input.txt; exit 0' INT
 
 show
 
@@ -96,6 +99,10 @@ while IFS= read -rsn1 key; do
     f) printf '\e[33m from: \e[0m'; read -r FROM; show ;;
     t) printf '\e[33m to: \e[0m'; read -r TO; show ;;
     e) printf '\e[33m engine (trans/g/tg/l): \e[0m'; read -r ENGINE; show ;;
+    c) printf "%s" "$TRANSLATION" | pbcopy; printf "\e[32m ✓ copied\e[0m\n" ;;
+    c) printf '%s' "$TRANSLATION" | pbcopy; printf '\e[32m ✓ copied\e[0m\n' ;;
+    +|=) echo "bigger" > /tmp/tmux-translator-resize; exit 0 ;;
+    -) echo "smaller" > /tmp/tmux-translator-resize; exit 0 ;;
   esac
 done
 HEREDOC
@@ -105,4 +112,24 @@ LLM_MODEL=$(get_llm_model)
 LLM_KEY_CMD=$(get_llm_key_cmd)
 sed -i '' "s|__FROM__|${FROM}|;s|__TO__|${TO}|;s|__ENGINE__|${ENGINE}|;s|__CDIR__|${CURRENT_DIR}|;s|__LLM_BASE__|${LLM_BASE}|;s|__LLM_MODEL__|${LLM_MODEL}|;s|__LLM_KEY_CMD__|${LLM_KEY_CMD}|" "$SCRIPT"
 chmod +x "$SCRIPT"
-tmux popup -w "$(get_width)" -h "$(get_height)" -E "bash $SCRIPT"
+
+# Resize loop: +/- relaunch popup with new size
+W=$(get_width | tr -d '%')
+H=$(get_height | tr -d '%')
+rm -f /tmp/tmux-translator-resize
+while true; do
+  tmux popup -w "${W}%" -h "${H}%" -E "bash $SCRIPT"
+  if [ -f /tmp/tmux-translator-resize ]; then
+    ACTION=$(cat /tmp/tmux-translator-resize)
+    rm -f /tmp/tmux-translator-resize
+    if [ "$ACTION" = "bigger" ]; then
+      W=$(( W + 10 > 95 ? 95 : W + 10 ))
+      H=$(( H + 10 > 95 ? 95 : H + 10 ))
+    else
+      W=$(( W - 10 < 30 ? 30 : W - 10 ))
+      H=$(( H - 10 < 30 ? 30 : H - 10 ))
+    fi
+  else
+    break
+  fi
+done
