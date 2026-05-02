@@ -1,5 +1,7 @@
 # tmux-translator
 
+[![en](https://img.shields.io/badge/lang-English-blue)](README.md) [![zh](https://img.shields.io/badge/lang-中文-red)](README-zh.md)
+
 版本：v1.1.0
 
 Translation:

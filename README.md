@@ -1,5 +1,7 @@
 # tmux-translator
 
+[![en](https://img.shields.io/badge/lang-English-blue)](README.md) [![zh](https://img.shields.io/badge/lang-中文-red)](README-zh.md)
+
 Translate selected text in tmux with an interactive popup. Fork of [sainnhe/tmux-translator](https://github.com/sainnhe/tmux-translator).
 
 ![screenshot](screenshot.png)
