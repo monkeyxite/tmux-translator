@@ -1,0 +1,36 @@
+{{ bos_token }}
+{%- for message in messages -%}
+{%- if message['role'] == 'assistant' -%}
+{{ '<end_of_turn>' }}
+{{ message["content"] | trim }}
+{{ '<end_of_turn>' }}
+{%- elif message['role'] == 'user' -%}
+{%- set content = message["content"] -%}
+{%- if content is string -%}
+{%- set parts = content.split(': ', 1) -%}
+{%- set text_part = parts[-1] -%}
+{%- set lang_part = parts[0] | lower -%}
+{%- set lang_codes = lang_part.split(' to ') -%}
+{%- set source_lang_code = lang_codes[0] | trim -%}
+{%- set target_lang_code = lang_codes[1] | trim if lang_codes|length > 1 else 'en' -%}
+{{ '<start_of_turn>user' }}
+You are a professional translator. Translate the following text from {{ source_lang_code }} to {{ target_lang_code }}. Only output the translation, nothing else.
+
+{{ text_part }}
+{{ '<end_of_turn>' }}
+{%- else -%}
+{%- set item = content[0] -%}
+{%- set source_lang_code = item.get('source_lang_code', 'en') -%}
+{%- set target_lang_code = item.get('target_lang_code', 'en') -%}
+{%- set text_part = item.get('text', '') -%}
+{{ '<start_of_turn>user' }}
+You are a professional translator. Translate the following text from {{ source_lang_code }} to {{ target_lang_code }}. Only output the translation, nothing else.
+
+{{ text_part }}
+{{ '<end_of_turn>' }}
+{%- endif -%}
+{%- endif -%}
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+{{ '<start_of_turn>model' }}
+{%- endif -%}
