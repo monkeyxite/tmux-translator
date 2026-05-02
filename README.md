@@ -131,3 +131,5 @@ Standard ISO codes: `en`, `zh`, `sv`, `de`, `fr`, `ja`, `ko`, `auto` (auto-detec
 - `uv run` for Python dependency management
 - Clean output: strips duplicate source text and alternatives
 - Increased default popup size (60%)
+
+> 📝 The [Chinese](README-zh.md) and [Swedish](README-sv.md) READMEs were translated using this plugin's `tg` engine. 🐕
