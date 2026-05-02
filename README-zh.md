@@ -1,6 +1,6 @@
 # tmux-translator
 
-[![en](https://img.shields.io/badge/lang-English-blue)](README.md) [![zh](https://img.shields.io/badge/lang-中文-red)](README-zh.md)
+[![en](https://img.shields.io/badge/lang-English-blue)](README.md) [![zh](https://img.shields.io/badge/lang-中文-red)](README-zh.md) [![sv](https://img.shields.io/badge/lang-Svenska-yellow)](README-sv.md)
 
 版本：v1.1.0
 
@@ -125,3 +125,5 @@ set -g @tmux-translator-llm-api-key-cmd "pass show ai/omlx"
 ## 语言代码
 
 标准 ISO 代码: `en`, `zh`, `sv`, `de`, `fr`, `ja`, `ko`, `auto` (自动检测)。
+
+> 📝 本 README 由 `translategemma` (本插件的 `tg` 引擎) 翻译。
